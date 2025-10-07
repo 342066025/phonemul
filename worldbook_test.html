@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>世界书角色提取测试</title>
+    <style>
+        body {
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .test-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background-color: #fafafa;
+        }
+        .test-section h2 {
+            color: #2c3e50;
+            margin-top: 0;
+        }
+        .test-button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+        }
+        .test-button:hover {
+            background-color: #2980b9;
+        }
+        .result {
+            margin-top: 15px;
+            padding: 15px;
+            background-color: #ecf0f1;
+            border-radius: 5px;
+            border-left: 4px solid #3498db;
+        }
+        .character-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .character-tag {
+            background-color: #e74c3c;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 14px;
+        }
+        .character-tag.from-worldbook {
+            background-color: #9b59b6;
+        }
+        .character-tag.from-contacts {
+            background-color: #e67e22;
+        }
+        .character-tag.from-messages {
+            background-color: #27ae60;
+        }
+        .log-output {
+            background-color: #2c3e50;
+            color: #ecf0f1;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🌍 世界书角色提取测试</h1>
+        
+        <div class="test-section">
+            <h2>📋 测试数据</h2>
+            <p>模拟你提供的世界书数据结构，包含联系人和消息记录。</p>
+            <button class="test-button" onclick="loadTestData()">加载测试数据</button>
+            <button class="test-button" onclick="showTestData()">显示测试数据</button>
+            <div id="testDataResult" class="result" style="display: none;"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>🎭 角色提取测试</h2>
+            <p>测试从世界书数据中提取角色的功能。</p>
+            <button class="test-button" onclick="testWorldBookExtraction()">提取世界书角色</button>
+            <button class="test-button" onclick="testContactsExtraction()">提取联系人角色</button>
+            <button class="test-button" onclick="testMessagesExtraction()">提取消息角色</button>
+            <button class="test-button" onclick="debugDataStructure()">调试数据结构</button>
+            <div id="extractionResult" class="result" style="display: none;"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>📊 提取结果</h2>
+            <div id="characterResults" class="character-list"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>📝 调试日志</h2>
+            <button class="test-button" onclick="clearLogs()">清空日志</button>
+            <div id="logOutput" class="log-output"></div>
+        </div>
+    </div>
+
+    <script>
+        // 模拟世界书数据
+        const testWorldBookData = {
+            contacts: {
+                "18555566946": {
+                    profile: {
+                        nickname: "郭蕾",
+                        note: "空姐同事"
+                    }
+                },
+                "13910284576": {
+                    profile: {
+                        nickname: "小蕾",
+                        note: "好朋友"
+                    }
+                },
+                "13812345678": {
+                    profile: {
+                        nickname: "秋怡",
+                        note: "室友"
+                    }
+                },
+                "18612345678": {
+                    profile: {
+                        nickname: "老公",
+                        note: "爱人"
+                    }
+                },
+                "13888888888": {
+                    profile: {
+                        nickname: "华春",
+                        note: "经理"
+                    }
+                }
+            },
+            messages: {
+                "18555566946": [
+                    {
+                        sender_id: "18555566946",
+                        content: "今天的航班怎么样？",
+                        timestamp: 1640995200000
+                    },
+                    {
+                        sender_id: "PLAYER_USER",
+                        content: "还不错，乘客都很配合",
+                        timestamp: 1640995260000
+                    }
+                ],
+                "13910284576": [
+                    {
+                        sender_id: "13910284576",
+                        content: "小蕾想约你一起逛街",
+                        timestamp: 1640995200000
+                    }
+                ]
+            }
+        };
+
+        // 日志函数
+        function log(message) {
+            const logOutput = document.getElementById('logOutput');
+            const timestamp = new Date().toLocaleTimeString();
+            logOutput.textContent += `[${timestamp}] ${message}\n`;
+            logOutput.scrollTop = logOutput.scrollHeight;
+            console.log(message);
+        }
+
+        function clearLogs() {
+            document.getElementById('logOutput').textContent = '';
+        }
+
+        // 加载测试数据
+        function loadTestData() {
+            window.PhoneSim_Data = testWorldBookData;
+            log('✅ 测试数据已加载到 window.PhoneSim_Data');
+            log(`📞 联系人数量: ${Object.keys(testWorldBookData.contacts).length}`);
+            log(`💬 对话数量: ${Object.keys(testWorldBookData.messages).length}`);
+        }
+
+        // 显示测试数据
+        function showTestData() {
+            const result = document.getElementById('testDataResult');
+            result.style.display = 'block';
+            result.innerHTML = `
+                <h3>📞 联系人列表</h3>
+                <ul>
+                    ${Object.entries(testWorldBookData.contacts).map(([phone, contact]) => 
+                        `<li><strong>${contact.profile.nickname}</strong> (${phone}) - ${contact.profile.note}</li>`
+                    ).join('')}
+                </ul>
+                <h3>💬 消息记录</h3>
+                <ul>
+                    ${Object.entries(testWorldBookData.messages).map(([phone, messages]) => 
+                        `<li>${phone}: ${messages.length} 条消息</li>`
+                    ).join('')}
+                </ul>
+            `;
+        }
+
+        // 角色提取函数
+        function extractCharactersFromWorldBook() {
+            log('🔍 开始从世界书提取角色');
+            const characterNames = new Set();
+            
+            try {
+                // 从手机模拟器数据中提取角色
+                if (window.PhoneSim_Data) {
+                    const phoneData = window.PhoneSim_Data;
+                    log('📱 找到手机模拟器数据');
+                    
+                    // 从联系人中提取角色
+                    if (phoneData.contacts) {
+                        Object.values(phoneData.contacts).forEach(contact => {
+                            if (contact && contact.profile) {
+                                if (contact.profile.nickname) {
+                                    characterNames.add(contact.profile.nickname);
+                                    log(`👤 从联系人提取角色: ${contact.profile.nickname}`);
+                                }
+                                if (contact.profile.note && contact.profile.note !== contact.profile.nickname) {
+                                    characterNames.add(contact.profile.note);
+                                    log(`📝 从联系人备注提取角色: ${contact.profile.note}`);
+                                }
+                            }
+                        });
+                    }
+                    
+                    // 从消息记录中提取角色
+                    if (phoneData.messages) {
+                        Object.values(phoneData.messages).forEach(conversation => {
+                            if (conversation && Array.isArray(conversation)) {
+                                conversation.forEach(message => {
+                                    if (message && message.sender_id && message.sender_id !== 'PLAYER_USER') {
+                                        // 查找对应的联系人信息
+                                        const contact = phoneData.contacts && phoneData.contacts[message.sender_id];
+                                        if (contact && contact.profile && contact.profile.nickname) {
+                                            characterNames.add(contact.profile.nickname);
+                                            log(`💬 从消息发送者提取角色: ${contact.profile.nickname}`);
+                                        }
+                                    }
+                                });
+                            }
+                        });
+                    }
+                }
+                
+            } catch (error) {
+                log(`❌ 从世界书提取角色时出错: ${error.message}`);
+            }
+            
+            const result = Array.from(characterNames);
+            log(`✅ 从世界书提取到的角色: ${result.join(', ')}`);
+            return result;
+        }
+
+        // 测试函数
+        function testWorldBookExtraction() {
+            if (!window.PhoneSim_Data) {
+                log('⚠️ 请先加载测试数据');
+                return;
+            }
+            
+            const characters = extractCharactersFromWorldBook();
+            displayCharacters(characters, 'from-worldbook');
+            
+            const result = document.getElementById('extractionResult');
+            result.style.display = 'block';
+            result.innerHTML = `
+                <h3>🎭 提取结果</h3>
+                <p>从世界书数据中提取到 <strong>${characters.length}</strong> 个角色：</p>
+                <p>${characters.join(', ')}</p>
+            `;
+        }
+
+        function testContactsExtraction() {
+            if (!window.PhoneSim_Data) {
+                log('⚠️ 请先加载测试数据');
+                return;
+            }
+            
+            const characters = [];
+            Object.values(window.PhoneSim_Data.contacts).forEach(contact => {
+                if (contact && contact.profile && contact.profile.nickname) {
+                    characters.push(contact.profile.nickname);
+                }
+            });
+            
+            displayCharacters(characters, 'from-contacts');
+            log(`📞 从联系人提取到 ${characters.length} 个角色: ${characters.join(', ')}`);
+        }
+
+        function testMessagesExtraction() {
+            if (!window.PhoneSim_Data) {
+                log('⚠️ 请先加载测试数据');
+                return;
+            }
+            
+            const characters = new Set();
+            Object.values(window.PhoneSim_Data.messages).forEach(conversation => {
+                if (conversation && Array.isArray(conversation)) {
+                    conversation.forEach(message => {
+                        if (message && message.sender_id && message.sender_id !== 'PLAYER_USER') {
+                            const contact = window.PhoneSim_Data.contacts[message.sender_id];
+                            if (contact && contact.profile && contact.profile.nickname) {
+                                characters.add(contact.profile.nickname);
+                            }
+                        }
+                    });
+                }
+            });
+            
+            const result = Array.from(characters);
+            displayCharacters(result, 'from-messages');
+            log(`💬 从消息记录提取到 ${result.length} 个角色: ${result.join(', ')}`);
+        }
+
+        function displayCharacters(characters, className) {
+            const container = document.getElementById('characterResults');
+            // 清空之前的结果
+            container.innerHTML = '';
+            
+            if (characters.length === 0) {
+                container.innerHTML = '<p style="color: #e74c3c;">❌ 没有提取到任何角色</p>';
+                return;
+            }
+            
+            characters.forEach(char => {
+                const tag = document.createElement('div');
+                tag.className = `character-tag ${className}`;
+                tag.textContent = char;
+                container.appendChild(tag);
+            });
+            
+            // 添加统计信息
+            const stats = document.createElement('div');
+            stats.style.marginTop = '10px';
+            stats.style.fontSize = '14px';
+            stats.style.color = '#7f8c8d';
+            stats.textContent = `共提取到 ${characters.length} 个角色`;
+            container.appendChild(stats);
+        }
+
+        // 调试数据结构
+        function debugDataStructure() {
+            log('🔍 开始调试数据结构');
+            
+            if (!window.PhoneSim_Data) {
+                log('❌ window.PhoneSim_Data 不存在');
+                return;
+            }
+            
+            log('✅ window.PhoneSim_Data 存在');
+            log(`📊 数据类型: ${typeof window.PhoneSim_Data}`);
+            log(`📊 数据内容: ${JSON.stringify(window.PhoneSim_Data, null, 2)}`);
+            
+            if (window.PhoneSim_Data.contacts) {
+                log(`📞 联系人数据存在，数量: ${Object.keys(window.PhoneSim_Data.contacts).length}`);
+                Object.entries(window.PhoneSim_Data.contacts).forEach(([phone, contact]) => {
+                    log(`📞 联系人 ${phone}: ${JSON.stringify(contact, null, 2)}`);
+                });
+            } else {
+                log('❌ 联系人数据不存在');
+            }
+            
+            if (window.PhoneSim_Data.messages) {
+                log(`💬 消息数据存在，对话数量: ${Object.keys(window.PhoneSim_Data.messages).length}`);
+                Object.entries(window.PhoneSim_Data.messages).forEach(([phone, messages]) => {
+                    log(`💬 对话 ${phone}: ${messages.length} 条消息`);
+                });
+            } else {
+                log('❌ 消息数据不存在');
+            }
+        }
+
+        // 页面加载时自动加载测试数据
+        window.addEventListener('load', () => {
+            log('🚀 世界书角色提取测试页面已加载');
+            loadTestData();
+        });
+    </script>
+</body>
+</html>

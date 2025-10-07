@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>手机模拟器正则表达式测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin-bottom: 30px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .test-input {
+            width: 100%;
+            height: 100px;
+            margin: 10px 0;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-family: monospace;
+        }
+        .test-output {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+            white-space: pre-wrap;
+            font-family: monospace;
+        }
+        .button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .button:hover {
+            background: #0056b3;
+        }
+        .extracted-characters {
+            background: #e7f3ff;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .character-item {
+            display: inline-block;
+            background: #007bff;
+            color: white;
+            padding: 5px 10px;
+            margin: 2px;
+            border-radius: 15px;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 手机模拟器正则表达式测试</h1>
+        
+        <div class="test-section">
+            <h3>📱 App指令内容提取测试</h3>
+            <p>测试你提供的正则表达式：<code>/\[app:[^\]]*?(?:content:([\s\S]*?)|data:\{[^}]*?"内容":"((?:\\"|[^"])*?)"[^}]*?\})\s*\]|\[app:[^\]]*?\]/gm</code></p>
+            
+            <textarea class="test-input" id="appInput" placeholder="输入包含 [app:...] 指令的文本...">
+[app:微信 content:小明: 你好，今天天气不错呢！]
+[app:电话 data:{"内容":"李华说：我们明天见面吧","类型":"通话"}]
+[app:短信 content:**张三**: 收到了，谢谢！]
+普通文本内容
+[app:朋友圈]
+[app:相机 content:*王五*: 这张照片真漂亮]</textarea>
+            
+            <button class="button" onclick="testAppRegex()">🔍 测试App指令提取</button>
+            
+            <div class="test-output" id="appOutput"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>👥 角色名提取测试</h3>
+            <p>测试从处理后的文本中提取角色名</p>
+            
+            <div class="test-output" id="characterOutput"></div>
+            <div class="extracted-characters" id="extractedCharacters"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>📋 预设测试用例</h3>
+            <button class="button" onclick="loadTestCase(1)">测试用例1: 混合格式</button>
+            <button class="button" onclick="loadTestCase(2)">测试用例2: 纯App指令</button>
+            <button class="button" onclick="loadTestCase(3)">测试用例3: 复杂对话</button>
+        </div>
+    </div>
+
+    <script>
+        // 手机模拟器正则表达式
+        const phoneSimRegex = /\[app:[^\]]*?(?:content:([\s\S]*?)|data:\{[^}]*?"内容":"((?:\\"|[^"])*?)"[^}]*?\})\s*\]|\[app:[^\]]*?\]/gm;
+        
+        // 角色名提取正则表达式（从characterSelector.js复制）
+        const characterPatterns = [
+            /^([^:\n]+)[:：]/gm,
+            /\*\*([^*\n]+)\*\*/g,
+            /\*([^*\n]+)\*/g,
+            /"([^"\n]+)说/g,
+            /([^，。！？\s\n]{2,8})[说道想问答回应笑哭喊叫]/g,
+            /[\u4e00-\u9fff]{2,4}/g,
+            /\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)?\b/g,
+            /[\u3040-\u309f\u30a0-\u30ff]{2,6}/g,
+            /[\uac00-\ud7af]{2,4}/g
+        ];
+        
+        const excludeWords = ['系统', '旁白', '描述', '场景', '背景', '时间', '地点', '环境', '用户', 'user', 'assistant', '助手', '微信', '语音', '通话', '电话', '视频', '朋友圈', '动态', '评论', '点赞', '转发', '分享', '收藏', '删除', '编辑', '修改', '保存', '今天', '昨天', '明天', '上午', '下午', '晚上', '早上', '中午', '深夜', '现在', '刚才', '稍后', '一会', '马上', '立即', '很快', '慢慢', '突然', '忽然', '正在', '已经', '还没', '刚刚', '刚好', '正好', '恰好', '刚巧', '碰巧', '偶然', '意外', 'System', 'User', 'Assistant', 'the', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by'];
+        
+        function testAppRegex() {
+            const input = document.getElementById('appInput').value;
+            const output = document.getElementById('appOutput');
+            const characterOutput = document.getElementById('characterOutput');
+            const extractedCharacters = document.getElementById('extractedCharacters');
+            
+            // 重置正则表达式
+            phoneSimRegex.lastIndex = 0;
+            
+            let result = '=== 原始文本 ===\n' + input + '\n\n';
+            result += '=== App指令匹配结果 ===\n';
+            
+            let matches = [];
+            let match;
+            while ((match = phoneSimRegex.exec(input)) !== null) {
+                matches.push({
+                    full: match[0],
+                    content1: match[1] || '',
+                    content2: match[2] || '',
+                    index: match.index
+                });
+            }
+            
+            if (matches.length === 0) {
+                result += '未找到匹配的App指令\n';
+            } else {
+                matches.forEach((m, i) => {
+                    result += `匹配 ${i + 1}:\n`;
+                    result += `  完整匹配: ${m.full}\n`;
+                    result += `  Content: "${m.content1}"\n`;
+                    result += `  Data内容: "${m.content2}"\n`;
+                    result += `  位置: ${m.index}\n\n`;
+                });
+            }
+            
+            // 应用替换
+            phoneSimRegex.lastIndex = 0;
+            const processedText = input.replace(phoneSimRegex, (match, content1, content2) => {
+                return content1 || content2 || '';
+            });
+            
+            result += '=== 处理后文本 ===\n' + processedText + '\n\n';
+            
+            output.textContent = result;
+            
+            // 提取角色名
+            extractCharacters(processedText, characterOutput, extractedCharacters);
+        }
+        
+        function extractCharacters(text, outputElement, charactersElement) {
+            const characterNames = new Set();
+            let extractionLog = '=== 角色名提取过程 ===\n';
+            
+            characterPatterns.forEach((pattern, index) => {
+                pattern.lastIndex = 0;
+                let match;
+                let patternMatches = [];
+                
+                while ((match = pattern.exec(text)) !== null) {
+                    const name = match[1] ? match[1].trim() : match[0].trim();
+                    if (name && name.length >= 2 && name.length <= 20) {
+                        if (!excludeWords.some(word => name.toLowerCase().includes(word.toLowerCase()))) {
+                            characterNames.add(name);
+                            patternMatches.push(name);
+                        }
+                    }
+                }
+                
+                if (patternMatches.length > 0) {
+                    extractionLog += `模式 ${index + 1} (${pattern.source}): ${patternMatches.join(', ')}\n`;
+                }
+            });
+            
+            extractionLog += `\n=== 最终提取的角色名 ===\n`;
+            extractionLog += Array.from(characterNames).join(', ') || '无';
+            
+            outputElement.textContent = extractionLog;
+            
+            // 显示角色标签
+            charactersElement.innerHTML = '';
+            if (characterNames.size > 0) {
+                charactersElement.innerHTML = '<strong>提取的角色:</strong><br>';
+                Array.from(characterNames).forEach(name => {
+                    const span = document.createElement('span');
+                    span.className = 'character-item';
+                    span.textContent = name;
+                    charactersElement.appendChild(span);
+                });
+            } else {
+                charactersElement.innerHTML = '<strong>未提取到角色名</strong>';
+            }
+        }
+        
+        function loadTestCase(caseNum) {
+            const input = document.getElementById('appInput');
+            
+            switch(caseNum) {
+                case 1:
+                    input.value = `[app:微信 content:小明: 你好，今天天气不错呢！]
+普通对话内容
+[app:电话 data:{"内容":"李华说：我们明天见面吧","类型":"通话"}]
+**张三**: 收到了，谢谢！
+[app:短信 content:*王五*: 这张照片真漂亮]`;
+                    break;
+                case 2:
+                    input.value = `[app:朋友圈 content:赵六发布了新动态：今天心情很好！]
+[app:微信群 data:{"内容":"群主说：大家好","群名":"同学群"}]
+[app:通话记录]
+[app:短信 content:陈七: 明天记得带文件]`;
+                    break;
+                case 3:
+                    input.value = `系统提示：小明说了一句话
+[app:微信 content:小明: 你好吗？]
+李华想了想
+[app:电话 data:{"内容":"李华回复：我很好，谢谢","时间":"14:30"}]
+**张三**看到了消息
+[app:朋友圈 content:张三点赞了这条动态]
+"王五说"这句话很有道理
+[app:短信]`;
+                    break;
+            }
+            
+            testAppRegex();
+        }
+        
+        // 页面加载时运行默认测试
+        window.onload = function() {
+            testAppRegex();
+        };
+    </script>
+</body>
+</html>

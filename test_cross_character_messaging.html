@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>跨角色消息功能测试</title>
+    <style>
+        body {
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .test-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background-color: #fafafa;
+        }
+        .test-section h2 {
+            color: #555;
+            margin-top: 0;
+        }
+        .button {
+            background-color: #007cba;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 14px;
+        }
+        .button:hover {
+            background-color: #005a87;
+        }
+        .button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        .log-area {
+            background-color: #000;
+            color: #00ff00;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            height: 300px;
+            overflow-y: auto;
+            margin-top: 10px;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        .status.success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .status.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .status.info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>跨角色消息功能测试</h1>
+        
+        <div class="test-section">
+            <h2>1. 系统状态检查</h2>
+            <button class="button" onclick="checkSystemStatus()">检查系统状态</button>
+            <button class="button" onclick="loadPhoneSimulator()">加载手机模拟器</button>
+            <div id="systemStatus" class="status info">等待检查...</div>
+        </div>
+
+        <div class="test-section">
+            <h2>2. 跨角色消息功能验证</h2>
+            <button class="button" onclick="validateImplementation()">验证功能实现</button>
+            <button class="button" onclick="runBasicTests()">运行基础测试</button>
+            <button class="button" onclick="simulateMessageFlow()">模拟消息流程</button>
+            <div id="validationStatus" class="status info">等待验证...</div>
+        </div>
+
+        <div class="test-section">
+            <h2>3. 实时日志</h2>
+            <button class="button" onclick="clearLog()">清空日志</button>
+            <button class="button" onclick="exportLog()">导出日志</button>
+            <div id="logArea" class="log-area"></div>
+        </div>
+    </div>
+
+    <!-- 加载必要的脚本 -->
+    <script src="script.js"></script>
+    <script src="test_cross_character_messaging.js"></script>
+
+    <script>
+        // 日志功能
+        function log(message, type = 'info') {
+            const logArea = document.getElementById('logArea');
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = `[${timestamp}] ${message}\n`;
+            logArea.textContent += logEntry;
+            logArea.scrollTop = logArea.scrollHeight;
+            
+            console.log(`[${type.toUpperCase()}] ${message}`);
+        }
+
+        function clearLog() {
+            document.getElementById('logArea').textContent = '';
+        }
+
+        function exportLog() {
+            const logContent = document.getElementById('logArea').textContent;
+            const blob = new Blob([logContent], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `cross_character_test_log_${new Date().toISOString().slice(0,19).replace(/:/g,'-')}.txt`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // 状态更新功能
+        function updateStatus(elementId, message, type = 'info') {
+            const element = document.getElementById(elementId);
+            element.textContent = message;
+            element.className = `status ${type}`;
+        }
+
+        // 系统状态检查
+        async function checkSystemStatus() {
+            log('开始检查系统状态...');
+            updateStatus('systemStatus', '正在检查...', 'info');
+            
+            try {
+                // 检查必要的全局对象
+                const checks = [
+                    { name: 'PhoneSim_Config', obj: window.PhoneSim_Config },
+                    { name: 'PhoneSim_State', obj: window.PhoneSim_State },
+                    { name: 'PhoneSim_DataHandler', obj: window.PhoneSim_DataHandler }
+                ];
+                
+                let allPassed = true;
+                for (const check of checks) {
+                    if (check.obj) {
+                        log(`✓ ${check.name} 已加载`);
+                    } else {
+                        log(`✗ ${check.name} 未加载`, 'error');
+                        allPassed = false;
+                    }
+                }
+                
+                if (allPassed) {
+                    updateStatus('systemStatus', '系统状态正常', 'success');
+                    log('系统状态检查完成 - 所有组件正常');
+                } else {
+                    updateStatus('systemStatus', '系统状态异常', 'error');
+                    log('系统状态检查完成 - 发现问题', 'error');
+                }
+                
+            } catch (error) {
+                log(`系统状态检查失败: ${error.message}`, 'error');
+                updateStatus('systemStatus', '检查失败', 'error');
+            }
+        }
+
+        // 加载手机模拟器
+        async function loadPhoneSimulator() {
+            log('开始加载手机模拟器...');
+            
+            try {
+                // 如果已经加载，跳过
+                if (window.PhoneSim_DataHandler) {
+                    log('手机模拟器已加载');
+                    return;
+                }
+                
+                // 动态加载脚本
+                const scripts = [
+                    'script.js'
+                ];
+                
+                for (const script of scripts) {
+                    await loadScript(script);
+                    log(`✓ 已加载 ${script}`);
+                }
+                
+                log('手机模拟器加载完成');
+                
+            } catch (error) {
+                log(`手机模拟器加载失败: ${error.message}`, 'error');
+            }
+        }
+
+        // 动态加载脚本
+        function loadScript(src) {
+            return new Promise((resolve, reject) => {
+                const script = document.createElement('script');
+                script.src = src;
+                script.onload = resolve;
+                script.onerror = reject;
+                document.head.appendChild(script);
+            });
+        }
+
+        // 验证功能实现
+        async function validateImplementation() {
+            log('开始验证跨角色消息功能实现...');
+            updateStatus('validationStatus', '正在验证...', 'info');
+            
+            try {
+                if (typeof validateCrossCharacterMessagingImplementation === 'function') {
+                    const result = validateCrossCharacterMessagingImplementation();
+                    if (result) {
+                        updateStatus('validationStatus', '功能实现完整', 'success');
+                        log('跨角色消息功能验证通过');
+                    } else {
+                        updateStatus('validationStatus', '功能实现不完整', 'error');
+                        log('跨角色消息功能验证失败', 'error');
+                    }
+                } else {
+                    throw new Error('验证函数未找到');
+                }
+            } catch (error) {
+                log(`功能验证失败: ${error.message}`, 'error');
+                updateStatus('validationStatus', '验证失败', 'error');
+            }
+        }
+
+        // 运行基础测试
+        async function runBasicTests() {
+            log('开始运行基础测试...');
+            
+            try {
+                if (typeof testCrossCharacterMessaging === 'function') {
+                    await testCrossCharacterMessaging();
+                    log('基础测试完成');
+                } else {
+                    throw new Error('测试函数未找到');
+                }
+            } catch (error) {
+                log(`基础测试失败: ${error.message}`, 'error');
+            }
+        }
+
+        // 模拟消息流程
+        async function simulateMessageFlow() {
+            log('开始模拟消息流程...');
+            
+            try {
+                if (typeof simulateCrossCharacterMessageFlow === 'function') {
+                    await simulateCrossCharacterMessageFlow();
+                    log('消息流程模拟完成');
+                } else {
+                    throw new Error('模拟函数未找到');
+                }
+            } catch (error) {
+                log(`消息流程模拟失败: ${error.message}`, 'error');
+            }
+        }
+
+        // 页面加载完成后自动检查系统状态
+        window.addEventListener('load', () => {
+            log('跨角色消息测试页面已加载');
+            setTimeout(checkSystemStatus, 1000);
+        });
+    </script>
+</body>
+</html>

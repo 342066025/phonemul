@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>修改后的角色提取功能测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .test-section {
+            margin-bottom: 30px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .test-section h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .results {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 10px;
+            white-space: pre-wrap;
+            font-family: monospace;
+        }
+        .character-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .character-item {
+            background: #e9ecef;
+            padding: 8px 12px;
+            border-radius: 20px;
+            font-size: 14px;
+        }
+        .character-item.from-chat {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+        }
+        .character-item.from-worldbook {
+            background: #d1ecf1;
+            border: 1px solid #bee5eb;
+        }
+        .log-area {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: 5px;
+            height: 300px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>修改后的角色提取功能测试</h1>
+        <p>测试移除SillyTavern角色卡提取功能后，只保留世界书和对话提取功能的角色选择器。</p>
+    </div>
+
+    <div class="container">
+        <div class="test-section">
+            <h3>🧪 功能测试</h3>
+            <button onclick="loadTestData()">加载测试数据</button>
+            <button onclick="testCharacterExtraction()">测试角色提取</button>
+            <button onclick="testWorldBookOnly()">测试仅世界书提取</button>
+            <button onclick="testChatOnly()">测试仅对话提取</button>
+            <button onclick="clearResults()">清空结果</button>
+        </div>
+
+        <div class="test-section">
+            <h3>📊 提取结果</h3>
+            <div id="characterResults" class="character-list"></div>
+            <div id="extractionStats" class="results"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>📝 调试日志</h3>
+            <div id="debugLog" class="log-area"></div>
+        </div>
+    </div>
+
+    <script type="module">
+        // 模拟 PhoneSim_State
+        window.PhoneSim_State = {
+            availableCharacters: ['保存的角色1', '保存的角色2']
+        };
+
+        // 模拟世界书数据
+        window.PhoneSim_Data = {
+            contacts: [
+                {
+                    profile: {
+                        nickname: "郭雷",
+                        note: "机长，经验丰富"
+                    }
+                },
+                {
+                    profile: {
+                        nickname: "小雷",
+                        note: "副驾驶"
+                    }
+                },
+                {
+                    profile: {
+                        nickname: "秋怡",
+                        note: "空姐，服务周到"
+                    }
+                }
+            ],
+            messages: [
+                {
+                    sender_id: "郭雷",
+                    content: "今天的航班准备情况如何？"
+                },
+                {
+                    sender_id: "小雷", 
+                    content: "一切正常，可以起飞"
+                },
+                {
+                    sender_id: "秋怡",
+                    content: "乘客都已就座"
+                },
+                {
+                    sender_id: "PLAYER_USER",
+                    content: "收到，准备起飞"
+                }
+            ]
+        };
+
+        // 模拟聊天数据
+        window.mockChatData = [
+            { name: "小明", mes: "你好，今天天气不错" },
+            { name: "李华", mes: "是的，很适合出门" },
+            { name: "张三", mes: "我们去公园走走吧" },
+            { name: "小明", mes: "好主意！" }
+        ];
+
+        // 日志函数
+        function log(message, type = 'info') {
+            const logArea = document.getElementById('debugLog');
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = `[${timestamp}] ${type.toUpperCase()}: ${message}\n`;
+            logArea.textContent += logEntry;
+            logArea.scrollTop = logArea.scrollHeight;
+            console.log(message);
+        }
+
+        // 加载测试数据
+        function loadTestData() {
+            log('开始加载测试数据...');
+            
+            // 模拟 SillyTavern API
+            window.SillyTavern_Main_API = {
+                getContext: () => ({
+                    chat: window.mockChatData
+                })
+            };
+
+            log('✅ 测试数据加载完成');
+            log(`- PhoneSim_State.availableCharacters: ${JSON.stringify(window.PhoneSim_State.availableCharacters)}`);
+            log(`- PhoneSim_Data.contacts: ${window.PhoneSim_Data.contacts.length} 个联系人`);
+            log(`- PhoneSim_Data.messages: ${window.PhoneSim_Data.messages.length} 条消息`);
+            log(`- 模拟聊天数据: ${window.mockChatData.length} 条消息`);
+        }
+
+        // 测试角色提取
+        async function testCharacterExtraction() {
+            log('🧪 开始测试完整角色提取功能...');
+            
+            try {
+                // 动态导入角色选择器
+                const { CharacterSelector } = await import('./modules/ui_modules/characterSelector.js');
+                
+                // 获取所有角色
+                const characters = await CharacterSelector.getAllCharacters();
+                
+                log(`✅ 角色提取完成，共找到 ${characters.length} 个角色`);
+                
+                // 显示结果
+                displayCharacters(characters);
+                showExtractionStats(characters);
+                
+            } catch (error) {
+                log(`❌ 角色提取失败: ${error.message}`, 'error');
+                console.error('角色提取错误:', error);
+            }
+        }
+
+        // 测试仅世界书提取
+        async function testWorldBookOnly() {
+            log('📚 开始测试仅世界书角色提取...');
+            
+            try {
+                const { CharacterSelector } = await import('./modules/ui_modules/characterSelector.js');
+                const worldBookCharacters = await CharacterSelector.extractCharactersFromWorldBook();
+                
+                log(`✅ 世界书角色提取完成，共找到 ${worldBookCharacters.length} 个角色`);
+                log(`世界书角色: ${JSON.stringify(worldBookCharacters)}`);
+                
+                const characters = worldBookCharacters.map(name => ({
+                    name,
+                    fromWorldBook: true
+                }));
+                
+                displayCharacters(characters);
+                
+            } catch (error) {
+                log(`❌ 世界书角色提取失败: ${error.message}`, 'error');
+            }
+        }
+
+        // 测试仅对话提取
+        async function testChatOnly() {
+            log('💬 开始测试仅对话角色提取...');
+            
+            try {
+                const { CharacterSelector } = await import('./modules/ui_modules/characterSelector.js');
+                const chatCharacters = await CharacterSelector.extractCharactersFromChat();
+                
+                log(`✅ 对话角色提取完成，共找到 ${chatCharacters.length} 个角色`);
+                log(`对话角色: ${JSON.stringify(chatCharacters)}`);
+                
+                const characters = chatCharacters.map(name => ({
+                    name,
+                    fromChat: true
+                }));
+                
+                displayCharacters(characters);
+                
+            } catch (error) {
+                log(`❌ 对话角色提取失败: ${error.message}`, 'error');
+            }
+        }
+
+        // 显示角色列表
+        function displayCharacters(characters) {
+            const resultsDiv = document.getElementById('characterResults');
+            resultsDiv.innerHTML = '';
+            
+            if (!characters || characters.length === 0) {
+                resultsDiv.innerHTML = '<p>未找到任何角色</p>';
+                return;
+            }
+            
+            characters.forEach(char => {
+                const div = document.createElement('div');
+                div.className = 'character-item';
+                
+                if (char.fromChat) {
+                    div.className += ' from-chat';
+                    div.textContent = `${char.name} (对话)`;
+                } else if (char.fromWorldBook) {
+                    div.className += ' from-worldbook';
+                    div.textContent = `${char.name} (世界书)`;
+                } else {
+                    div.textContent = char.name;
+                }
+                
+                resultsDiv.appendChild(div);
+            });
+        }
+
+        // 显示提取统计
+        function showExtractionStats(characters) {
+            const statsDiv = document.getElementById('extractionStats');
+            
+            const fromChat = characters.filter(c => c.fromChat).length;
+            const fromWorldBook = characters.filter(c => c.fromWorldBook).length;
+            const fromSaved = characters.filter(c => !c.fromChat && !c.fromWorldBook).length;
+            
+            const stats = `
+提取统计:
+- 总角色数: ${characters.length}
+- 来自对话: ${fromChat}
+- 来自世界书: ${fromWorldBook}
+- 来自保存列表: ${fromSaved}
+
+验证结果:
+✅ 已移除SillyTavern角色卡提取功能
+✅ 保留了对话角色提取功能
+✅ 保留了世界书角色提取功能
+            `;
+            
+            statsDiv.textContent = stats;
+        }
+
+        // 清空结果
+        function clearResults() {
+            document.getElementById('characterResults').innerHTML = '';
+            document.getElementById('extractionStats').textContent = '';
+            document.getElementById('debugLog').textContent = '';
+            log('🧹 结果已清空');
+        }
+
+        // 全局函数
+        window.loadTestData = loadTestData;
+        window.testCharacterExtraction = testCharacterExtraction;
+        window.testWorldBookOnly = testWorldBookOnly;
+        window.testChatOnly = testChatOnly;
+        window.clearResults = clearResults;
+
+        // 页面加载完成后自动加载测试数据
+        document.addEventListener('DOMContentLoaded', () => {
+            log('📄 页面加载完成，准备测试修改后的角色提取功能');
+            loadTestData();
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>角色选择器测试</title>
+    <style>
+        body {
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        .test-button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+        }
+        .test-button:hover {
+            background-color: #2980b9;
+        }
+        .result {
+            margin-top: 15px;
+            padding: 15px;
+            background-color: #ecf0f1;
+            border-radius: 5px;
+            border-left: 4px solid #3498db;
+        }
+        .log-output {
+            background-color: #2c3e50;
+            color: #ecf0f1;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            max-height: 400px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+        .character-selector {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background-color: #fafafa;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎭 角色选择器测试</h1>
+        
+        <div class="character-selector">
+            <h3>角色选择器</h3>
+            <div id="characterSelectorContainer"></div>
+        </div>
+        
+        <div>
+            <button class="test-button" onclick="loadTestData()">加载测试数据</button>
+            <button class="test-button" onclick="testCharacterSelector()">测试角色选择器</button>
+            <button class="test-button" onclick="clearLogs()">清空日志</button>
+        </div>
+        
+        <div class="result">
+            <h3>📝 测试日志</h3>
+            <div id="logOutput" class="log-output"></div>
+        </div>
+    </div>
+
+    <!-- 引入角色选择器模块 -->
+    <script type="module">
+        import { PhoneSim_State } from './modules/state.js';
+        import { CharacterSelector } from './modules/ui_modules/characterSelector.js';
+        
+        // 将模块暴露到全局作用域以便测试
+        window.PhoneSim_State = PhoneSim_State;
+        window.CharacterSelector = CharacterSelector;
+        
+        // 模拟 SillyTavern API
+        window.SillyTavern_Main_API = {
+            getContext: () => ({
+                name2: '当前角色'
+            })
+        };
+        
+        window.TavernHelper_API = {
+            getChatMessages: () => [
+                { content: '你好，我是小明', is_user: false },
+                { content: '很高兴认识你', is_user: true },
+                { content: '李华也在这里', is_user: false }
+            ]
+        };
+        
+        // 日志函数
+        function log(message) {
+            const logOutput = document.getElementById('logOutput');
+            const timestamp = new Date().toLocaleTimeString();
+            logOutput.textContent += `[${timestamp}] ${message}\n`;
+            logOutput.scrollTop = logOutput.scrollHeight;
+            console.log(message);
+        }
+        
+        function clearLogs() {
+            document.getElementById('logOutput').textContent = '';
+        }
+        
+        // 加载测试数据
+        function loadTestData() {
+            // 模拟世界书数据
+            window.PhoneSim_Data = {
+                contacts: {
+                    "18555566946": {
+                        profile: {
+                            nickname: "郭蕾",
+                            note: "空姐同事"
+                        }
+                    },
+                    "13910284576": {
+                        profile: {
+                            nickname: "小蕾",
+                            note: "好朋友"
+                        }
+                    },
+                    "13812345678": {
+                        profile: {
+                            nickname: "秋怡",
+                            note: "室友"
+                        }
+                    },
+                    "18612345678": {
+                        profile: {
+                            nickname: "老公",
+                            note: "爱人"
+                        }
+                    },
+                    "13888888888": {
+                        profile: {
+                            nickname: "华春",
+                            note: "经理"
+                        }
+                    }
+                },
+                messages: {
+                    "18555566946": [
+                        {
+                            sender_id: "18555566946",
+                            content: "今天的航班怎么样？",
+                            timestamp: 1640995200000
+                        }
+                    ]
+                }
+            };
+            
+            log('✅ 测试数据已加载');
+            log(`📞 联系人数量: ${Object.keys(window.PhoneSim_Data.contacts).length}`);
+        }
+        
+        // 测试角色选择器
+        async function testCharacterSelector() {
+            try {
+                log('🔍 开始测试角色选择器');
+                
+                // 创建角色选择器容器
+                const container = document.getElementById('characterSelectorContainer');
+                container.innerHTML = `
+                    <div class="character-selector-wrapper">
+                        <div class="character-selector-button" id="characterSelectorButton">
+                            <span id="currentCharacterName">选择角色</span>
+                            <span class="dropdown-arrow">▼</span>
+                        </div>
+                        <div class="character-dropdown" id="characterDropdown" style="display: none;">
+                            <div class="character-list" id="characterList"></div>
+                        </div>
+                    </div>
+                `;
+                
+                // 初始化角色选择器
+                await CharacterSelector.init();
+                log('✅ 角色选择器初始化完成');
+                
+                // 测试获取所有角色
+                const characters = await CharacterSelector.getAllCharacters();
+                log(`🎭 获取到 ${characters.length} 个角色:`);
+                characters.forEach(char => {
+                    const sources = [];
+                    if (char.isCurrent) sources.push('当前');
+                    if (char.fromChat) sources.push('聊天');
+                    if (char.fromWorldBook) sources.push('世界书');
+                    if (char.fromSillyTavern) sources.push('SillyTavern');
+                    log(`  - ${char.name} (来源: ${sources.join(', ')})`);
+                });
+                
+                // 测试世界书提取
+                const worldBookCharacters = await CharacterSelector.extractCharactersFromWorldBook();
+                log(`🌍 从世界书提取到 ${worldBookCharacters.length} 个角色: ${worldBookCharacters.join(', ')}`);
+                
+            } catch (error) {
+                log(`❌ 测试失败: ${error.message}`);
+                console.error(error);
+            }
+        }
+        
+        // 暴露函数到全局作用域
+        window.log = log;
+        window.clearLogs = clearLogs;
+        window.loadTestData = loadTestData;
+        window.testCharacterSelector = testCharacterSelector;
+        
+        // 页面加载时初始化
+        window.addEventListener('load', () => {
+            log('🚀 角色选择器测试页面已加载');
+        });
+    </script>
+</body>
+</html>

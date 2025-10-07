@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>角色切换功能测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .test-container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin-bottom: 30px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .test-section h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .status.success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .status.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .status.info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        #characterInfo {
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>手机模拟器多角色版 - 角色切换功能测试</h1>
+        
+        <div class="test-section">
+            <h3>1. 模块加载测试</h3>
+            <div id="moduleStatus" class="status info">正在检查模块加载状态...</div>
+            <button onclick="testModuleLoading()">重新检查模块</button>
+        </div>
+        
+        <div class="test-section">
+            <h3>2. 状态管理测试</h3>
+            <div id="stateStatus" class="status info">正在检查状态管理...</div>
+            <div id="characterInfo"></div>
+            <button onclick="testStateManagement()">测试状态管理</button>
+        </div>
+        
+        <div class="test-section">
+            <h3>3. 角色提取测试</h3>
+            <button onclick="testCharacterExtraction()">测试角色提取</button>
+            <div id="extraction-status" class="status info">等待测试...</div>
+            <div style="background: #e7f3ff; padding: 10px; margin: 10px 0; border-radius: 4px; border-left: 4px solid #007bff;">
+                <strong>💡 提示：</strong>测试完成后，请点击下方的角色选择器来查看提取到的角色列表！
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h3>4. 角色切换测试</h3>
+            <div id="switchStatus" class="status info">准备测试角色切换...</div>
+            
+            <!-- 角色选择器UI -->
+            <div class="character-selector" id="character-selector" style="margin: 10px 0;">
+                <div class="current-character" id="current-character-display" style="padding: 10px; background: #f8f9fa; border: 1px solid #ddd; border-radius: 4px; cursor: pointer;">
+                    <i class="fas fa-user"></i>
+                    <span class="character-name">角色</span>
+                    <i class="fas fa-chevron-down"></i>
+                </div>
+                <div class="character-dropdown" id="character-dropdown" style="display: none; border: 1px solid #ddd; border-radius: 4px; background: white; margin-top: 5px;">
+                    <div class="character-list" id="character-list" style="max-height: 200px; overflow-y: auto;">
+                        <!-- Characters will be populated here -->
+                    </div>
+                </div>
+            </div>
+            
+            <button onclick="testCharacterSwitch()">测试角色切换</button>
+            <button onclick="addTestCharacter()">添加测试角色</button>
+            
+            <!-- 显示提取到的角色列表 -->
+            <div style="margin-top: 15px; padding: 10px; background: #f8f9fa; border-radius: 4px;">
+                <h4>📋 当前可用角色列表：</h4>
+                <div id="available-characters-display" style="margin-top: 10px;">
+                    <em>正在加载角色...</em>
+                </div>
+                <button onclick="refreshCharacterList()" style="margin-top: 10px;">刷新角色列表</button>
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h3>5. 数据隔离测试</h3>
+            <div id="isolationStatus" class="status info">准备测试数据隔离...</div>
+            <button onclick="testDataIsolation()">测试数据隔离</button>
+        </div>
+    </div>
+
+    <script type="module">
+        // 模拟SillyTavern环境
+        window.SillyTavern_Main_API = {
+            getContext: () => ({
+                name2: 'TestCharacter1'
+            })
+        };
+
+        // 刷新并显示角色列表
+        window.refreshCharacterList = async function() {
+            const displayElement = document.getElementById('available-characters-display');
+            
+            try {
+                displayElement.innerHTML = '<em>正在获取角色列表...</em>';
+                
+                // 获取所有角色
+                const allCharacters = await CharacterSelector.getAllCharacters();
+                console.log('[Test] 刷新角色列表:', allCharacters);
+                
+                if (allCharacters && allCharacters.length > 0) {
+                    let html = '<div style="display: grid; gap: 8px;">';
+                    
+                    allCharacters.forEach(char => {
+                        const sourceLabel = char.source === 'chat' ? '💬 对话' : 
+                                          char.source === 'current' ? '⭐ 当前' : 
+                                          char.source === 'saved' ? '💾 已保存' : '📚 SillyTavern';
+                        
+                        html += `
+                            <div style="padding: 8px; background: white; border: 1px solid #ddd; border-radius: 4px; display: flex; justify-content: space-between; align-items: center;">
+                                <span><strong>${char.name}</strong></span>
+                                <span style="font-size: 12px; color: #666; background: #f0f0f0; padding: 2px 6px; border-radius: 3px;">${sourceLabel}</span>
+                            </div>
+                        `;
+                    });
+                    
+                    html += '</div>';
+                    displayElement.innerHTML = html;
+                } else {
+                    displayElement.innerHTML = '<em style="color: #666;">暂无可用角色</em>';
+                }
+                
+            } catch (error) {
+                console.error('[Test] 刷新角色列表失败:', error);
+                displayElement.innerHTML = `<em style="color: #dc3545;">获取角色列表失败: ${error.message}</em>`;
+            }
+        };
+        
+        window.TavernHelper_API = {
+            getWorldbookNames: async () => ['TestLorebook1', 'TestLorebook2'],
+            createOrReplaceWorldbook: async (name, entries) => {
+                console.log(`创建Lorebook: ${name}`);
+                return true;
+            },
+            getCharWorldbookNames: async (char) => ({
+                primary: 'primary_book',
+                additional: ['additional_book1']
+            }),
+            rebindCharWorldbooks: async (char, books) => {
+                console.log(`重新绑定Lorebook:`, books);
+                return true;
+            }
+        };
+
+        // 导入模块
+        try {
+            const { PhoneSim_Config } = await import('./config.js');
+            const { PhoneSim_State } = await import('./modules/state.js');
+            const { CharacterSelector } = await import('./modules/ui_modules/characterSelector.js');
+            
+            window.PhoneSim_Config = PhoneSim_Config;
+            window.PhoneSim_State = PhoneSim_State;
+            window.CharacterSelector = CharacterSelector;
+            
+            // 初始化
+            PhoneSim_State.init();
+            
+            // 添加一些测试角色数据
+            window.characters = [
+                { name: '测试角色1', avatar: 'avatar1.png' },
+                { name: '测试角色2', avatar: 'avatar2.png' },
+                { name: '测试角色3', avatar: 'avatar3.png' }
+            ];
+            
+            // 模拟SillyTavern环境
+        window.parent = window.parent || {};
+        window.parent.characters = window.characters;
+
+        // 模拟TavernHelper_API.getChatMessages方法
+        window.TavernHelper_API = window.TavernHelper_API || {};
+        window.TavernHelper_API.getChatMessages = function(msgId, limit) {
+            console.log('[Test] 模拟获取聊天消息, msgId:', msgId, 'limit:', limit);
+            
+            // 返回模拟的聊天消息，包含多个角色
+            return [
+                {
+                    message: "小红: 你好，今天天气真不错呢！",
+                    timestamp: Date.now() - 3600000
+                },
+                {
+                    message: "**李明**走进房间，看了看周围的环境。",
+                    timestamp: Date.now() - 3500000
+                },
+                {
+                    message: "张三说道：\"我觉得我们应该去公园走走。\"",
+                    timestamp: Date.now() - 3000000
+                },
+                {
+                    message: "*王五*轻声回应：\"好主意，我也想出去透透气。\"",
+                    timestamp: Date.now() - 2500000
+                },
+                {
+                    message: "小红笑着说：\"那我们一起去吧！\"",
+                    timestamp: Date.now() - 2000000
+                },
+                {
+                    message: "李明点了点头，表示同意。",
+                    timestamp: Date.now() - 1500000
+                },
+                {
+                    message: "\"太好了！\"张三兴奋地说道。",
+                    timestamp: Date.now() - 1000000
+                },
+                {
+                    message: "王五想了想，然后说：\"我们什么时候出发？\"",
+                    timestamp: Date.now() - 500000
+                }
+            ];
+        };
+            
+            CharacterSelector.init();
+            
+            updateModuleStatus('success', '所有模块加载成功！');
+        } catch (error) {
+            updateModuleStatus('error', `模块加载失败: ${error.message}`);
+            console.error('模块加载错误:', error);
+        }
+
+        function updateModuleStatus(type, message) {
+            const element = document.getElementById('moduleStatus');
+            element.className = `status ${type}`;
+            element.textContent = message;
+        }
+
+        function updateStateStatus(type, message) {
+            const element = document.getElementById('stateStatus');
+            element.className = `status ${type}`;
+            element.textContent = message;
+        }
+
+        function updateSwitchStatus(type, message) {
+            const element = document.getElementById('switchStatus');
+            element.className = `status ${type}`;
+            element.textContent = message;
+        }
+
+        function updateIsolationStatus(type, message) {
+            const element = document.getElementById('isolationStatus');
+            element.className = `status ${type}`;
+            element.textContent = message;
+        }
+
+        window.testModuleLoading = function() {
+            try {
+                const modules = [
+                    'PhoneSim_Config',
+                    'PhoneSim_State', 
+                    'CharacterSelector'
+                ];
+                
+                const missing = modules.filter(name => !window[name]);
+                
+                if (missing.length === 0) {
+                    updateModuleStatus('success', '所有必需模块都已加载');
+                } else {
+                    updateModuleStatus('error', `缺少模块: ${missing.join(', ')}`);
+                }
+            } catch (error) {
+                updateModuleStatus('error', `检查失败: ${error.message}`);
+            }
+        };
+
+        window.testStateManagement = function() {
+            try {
+                if (!window.PhoneSim_State) {
+                    updateStateStatus('error', 'PhoneSim_State 模块未加载');
+                    return;
+                }
+
+                // 测试当前角色
+                const currentChar = PhoneSim_State.currentCharacter;
+                const availableChars = PhoneSim_State.availableCharacters;
+                
+                document.getElementById('characterInfo').innerHTML = `
+                    <strong>当前角色:</strong> ${currentChar || '未设置'}<br>
+                    <strong>可用角色:</strong> ${availableChars ? availableChars.join(', ') : '无'}
+                `;
+                
+                updateStateStatus('success', '状态管理正常工作');
+            } catch (error) {
+                updateStateStatus('error', `状态管理测试失败: ${error.message}`);
+            }
+        };
+
+        window.addTestCharacter = function() {
+            try {
+                if (!window.PhoneSim_State) {
+                    updateSwitchStatus('error', 'PhoneSim_State 模块未加载');
+                    return;
+                }
+
+                const testChar = 'TestCharacter2';
+                PhoneSim_State.addCharacterToList(testChar);
+                updateSwitchStatus('success', `已添加测试角色: ${testChar}`);
+                
+                // 更新角色信息显示
+                testStateManagement();
+            } catch (error) {
+                updateSwitchStatus('error', `添加角色失败: ${error.message}`);
+            }
+        };
+
+        window.testCharacterExtraction = async function() {
+            const extractionStatus = document.getElementById('extraction-status');
+            
+            const updateExtractionStatus = (type, message) => {
+                extractionStatus.className = `status ${type}`;
+                extractionStatus.textContent = message;
+            };
+            
+            try {
+                updateExtractionStatus('loading', '正在测试角色提取功能...');
+                
+                // 测试角色提取
+                const extractedCharacters = await CharacterSelector.extractCharactersFromChat();
+                console.log('[Test] 提取到的角色:', extractedCharacters);
+                
+                // 验证是否提取到了预期的角色
+                const expectedCharacters = ['小红', '李明', '张三', '王五'];
+                const foundCharacters = expectedCharacters.filter(char => 
+                    extractedCharacters.includes(char)
+                );
+                
+                if (foundCharacters.length >= 3) {
+                    updateExtractionStatus('success', 
+                        `角色提取测试通过：成功识别 ${foundCharacters.length} 个角色 (${foundCharacters.join(', ')})`);
+                } else {
+                    updateExtractionStatus('error', 
+                        `角色提取测试部分失败：仅识别 ${foundCharacters.length} 个角色 (${foundCharacters.join(', ')})`);
+                }
+                
+                // 测试完整的角色列表获取
+                const allCharacters = await CharacterSelector.getAllCharacters();
+                const chatCharacters = allCharacters.filter(char => char.source === 'chat');
+                
+                console.log('[Test] 完整角色列表:', allCharacters);
+                console.log('[Test] 来自对话的角色:', chatCharacters);
+                
+            } catch (error) {
+                updateExtractionStatus('error', `角色提取测试失败: ${error.message}`);
+                console.error('[Test] 角色提取测试错误:', error);
+            }
+        };
+
+        window.testCharacterSwitch = async function() {
+            try {
+                if (!window.CharacterSelector) {
+                    updateSwitchStatus('error', 'CharacterSelector 模块未加载');
+                    return;
+                }
+
+                // 确保有测试角色
+                addTestCharacter();
+                
+                const originalChar = PhoneSim_State.currentCharacter;
+                await CharacterSelector.switchCharacter('TestCharacter2');
+                const newChar = PhoneSim_State.currentCharacter;
+                
+                if (newChar === 'TestCharacter2') {
+                    updateSwitchStatus('success', `角色切换成功: ${originalChar} → ${newChar}`);
+                } else {
+                    updateSwitchStatus('error', `角色切换失败: 期望 TestCharacter2，实际 ${newChar}`);
+                }
+                
+                // 更新角色信息显示
+                testStateManagement();
+            } catch (error) {
+                updateSwitchStatus('error', `角色切换测试失败: ${error.message}`);
+            }
+        };
+
+        window.testDataIsolation = async function() {
+            try {
+                // 模拟数据隔离测试
+                const char1 = 'TestCharacter1';
+                const char2 = 'TestCharacter2';
+                
+                // 为角色1保存一些状态
+                PhoneSim_State.saveUiState(char1);
+                localStorage.setItem(`${PhoneSim_Config.STORAGE_KEY_UI}_${char1}`, JSON.stringify({
+                    testData: 'data_for_char1'
+                }));
+                
+                // 为角色2保存不同的状态
+                localStorage.setItem(`${PhoneSim_Config.STORAGE_KEY_UI}_${char2}`, JSON.stringify({
+                    testData: 'data_for_char2'
+                }));
+                
+                // 测试加载不同角色的数据
+                PhoneSim_State.loadUiState(char1);
+                const data1 = JSON.parse(localStorage.getItem(`${PhoneSim_Config.STORAGE_KEY_UI}_${char1}`) || '{}');
+                
+                PhoneSim_State.loadUiState(char2);
+                const data2 = JSON.parse(localStorage.getItem(`${PhoneSim_Config.STORAGE_KEY_UI}_${char2}`) || '{}');
+                
+                if (data1.testData === 'data_for_char1' && data2.testData === 'data_for_char2') {
+                    updateIsolationStatus('success', '数据隔离测试通过：不同角色的数据正确分离');
+                } else {
+                    updateIsolationStatus('error', '数据隔离测试失败：数据未正确分离');
+                }
+            } catch (error) {
+                updateIsolationStatus('error', `数据隔离测试失败: ${error.message}`);
+            }
+        };
+
+        // 页面加载完成后自动运行基础测试
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                testModuleLoading();
+                testStateManagement();
+                testCharacterExtraction();
+                // 延迟刷新角色列表，确保角色提取完成
+                setTimeout(() => {
+                    refreshCharacterList();
+                }, 2000);
+            }, 1000);
+        });
+    </script>
+</body>
+</html>
